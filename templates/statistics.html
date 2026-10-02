@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống Kê Tần Suất Điểm Danh Trong Tháng</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="brand-area">
+            <div class="brand-icon" style="color: var(--warning); background-color: var(--warning-bg);">📊</div>
+            <div>
+                <h1 class="brand-title">Thống Kê Tần Suất Trong Tháng</h1>
+                <div class="brand-subtitle">Chu kỳ: Tháng {{ current_month }} &bull; Đánh giá chuyên cần của từng nhân sự</div>
+            </div>
+        </div>
+        <div class="header-badges">
+            <div class="status-badge" style="background-color: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border);">
+                <span class="status-dot"></span>
+                <span>Tháng {{ current_month }}</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="app-nav">
+        <a href="/" class="nav-item {{ 'active' if active_page == 'home' else '' }}">
+            <span>📹</span> Trang Chủ & Camera
+        </a>
+        <a href="/on-time" class="nav-item nav-ontime {{ 'active' if active_page == 'on_time' else '' }}">
+            <span>✅</span> Đúng Giờ Hôm Nay (≤ 8h00)
+        </a>
+        <a href="/late" class="nav-item nav-late {{ 'active' if active_page == 'late' else '' }}">
+            <span>⚠️</span> Đi Muộn Hôm Nay (> 8h00)
+        </a>
+        <a href="/statistics" class="nav-item nav-stats {{ 'active' if active_page == 'statistics' else '' }}">
+            <span>📊</span> Tần Suất Trong Tháng
+        </a>
+    </nav>
+
+    <!-- Nội dung chính -->
+    <main class="main-content">
+        
+        <!-- Thống kê nhanh dạng thẻ phẳng -->
+        <div class="metric-grid">
+            <div class="metric-card border-warning">
+                <div class="metric-label">Tổng nhân sự có dữ liệu</div>
+                <div class="metric-value" style="color: var(--warning);">{{ stats|length }}</div>
+                <div class="metric-desc">Người có lượt check-in trong tháng</div>
+            </div>
+            <div class="metric-card border-primary">
+                <div class="metric-label">Chu kỳ báo cáo</div>
+                <div class="metric-value" style="color: var(--primary); font-size: 24px; padding-top: 5px;">Tháng {{ current_month }}</div>
+                <div class="metric-desc">Tự động tổng hợp từ đầu tháng đến nay</div>
+            </div>
+            <div class="metric-card border-success">
+                <div class="metric-label">Quy chuẩn xét đúng giờ</div>
+                <div class="metric-value" style="color: var(--success);">≤ 08:00 AM</div>
+                <div class="metric-desc">Tính lượt điểm danh đầu tiên mỗi ngày</div>
+            </div>
+        </div>
+
+        <!-- Bảng danh sách tần suất -->
+        <section class="flat-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>📊</span> Bảng Tần Suất Đúng Giờ & Đi Muộn Theo Từng Người
+                </div>
+                <span class="card-tag">BÁO CÁO THÁNG</span>
+            </div>
+            <div class="table-responsive">
+                <table class="flat-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">STT</th>
+                            <th>Họ và tên / ID</th>
+                            <th style="text-align: center;">Tổng ngày điểm danh</th>
+                            <th style="text-align: center;">Số lần đúng giờ</th>
+                            <th style="text-align: center;">Số lần đi muộn</th>
+                            <th style="width: 260px;">Tỷ lệ đúng giờ (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if stats %}
+                            {% for item in stats %}
+                            <tr>
+                                <td style="color: var(--text-muted); font-weight: 600;">#{{ loop.index }}</td>
+                                <td class="person-name">{{ item.name }}</td>
+                                <td style="text-align: center; font-weight: 600; color: var(--text-secondary);">
+                                    {{ item.total_days }} ngày
+                                </td>
+                                <td style="text-align: center;">
+                                    <span style="display: inline-block; padding: 2px 10px; border-radius: 9999px; background-color: var(--success-bg); color: var(--success); font-weight: 700; border: 1px solid var(--success-border);">
+                                        {{ item.on_time_count }} lần
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span style="display: inline-block; padding: 2px 10px; border-radius: 9999px; background-color: {% if item.late_count > 0 %}var(--danger-bg){% else %}#f1f5f9{% endif %}; color: {% if item.late_count > 0 %}var(--danger){% else %}var(--text-muted){% endif %}; font-weight: 700; border: 1px solid {% if item.late_count > 0 %}var(--danger-border){% else %}#e2e8f0{% endif %};">
+                                        {{ item.late_count }} lần
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 4px;">
+                                        <span style="color: {% if item.on_time_rate >= 80 %}var(--success){% elif item.on_time_rate >= 50 %}var(--warning){% else %}var(--danger){% endif %};">
+                                            {{ item.on_time_rate }}%
+                                        </span>
+                                        <span style="color: var(--text-muted); font-size: 11px; font-weight: 500;">
+                                            {{ item.on_time_count }} / {{ item.total_days }} ngày
+                                        </span>
+                                    </div>
+                                    <div class="progress-container">
+                                        <div class="progress-bar" style="width: {{ item.on_time_rate }}%; background-color: {% if item.on_time_rate >= 80 %}var(--success){% elif item.on_time_rate >= 50 %}var(--warning){% else %}var(--danger){% endif %};"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+                                    Chưa có dữ liệu điểm danh nào trong tháng này.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Điểm Danh Thông Minh</title>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+    <!-- Header chính -->
+    <header class="app-header">
+        <div class="brand-area">
+            <div class="brand-icon">✓</div>
+            <div>
+                <h1 class="brand-title">Hệ Thống Điểm Danh & Kiểm Soát Cửa</h1>
+                <div class="brand-subtitle">Smart Door Access & Realtime Attendance Dashboard</div>
+            </div>
+        </div>
+        <div class="header-badges">
+            <div class="status-badge online">
+                <span class="status-dot"></span>
+                <span>ESP32 Hoạt động</span>
+            </div>
+            <div class="status-badge online">
+                <span class="status-dot"></span>
+                <span>AI Camera Trực tiếp</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Thanh điều hướng phẳng 2D -->
+    <nav class="app-nav">
+        <a href="/" class="nav-item {{ 'active' if active_page == 'home' else '' }}">
+            <span>📹</span> Trang Chủ & Camera
+        </a>
+        <a href="/on-time" class="nav-item nav-ontime {{ 'active' if active_page == 'on_time' else '' }}">
+            <span>✅</span> Đúng Giờ Hôm Nay (≤ 8h00)
+        </a>
+        <a href="/late" class="nav-item nav-late {{ 'active' if active_page == 'late' else '' }}">
+            <span>⚠️</span> Đi Muộn Hôm Nay (> 8h00)
+        </a>
+        <a href="/statistics" class="nav-item nav-stats {{ 'active' if active_page == 'statistics' else '' }}">
+            <span>📊</span> Tần Suất Trong Tháng
+        </a>
+    </nav>
+
+    <!-- Bố cục 2 cột chính -->
+    <main class="main-content">
+        <div class="dual-grid">
+            
+            <!-- Cột trái: Luồng Camera AI -->
+            <section class="flat-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>📹</span> Camera AI Nhận Diện Khuôn Mặt
+                    </div>
+                    <span class="card-tag">YOLOv8 Realtime</span>
+                </div>
+                <div class="card-body">
+                    <div class="video-container">
+                        <div class="live-indicator">
+                            <span class="live-dot"></span>
+                            <span>TRỰC TIẾP</span>
+                        </div>
+                        <img src="{{ url_for('video_feed') }}" alt="Camera Stream" class="camera-stream" onerror="this.src='https://placehold.co/800x600/f1f5f9/64748b?text=Dang+cho+tin+hieu+camera...'">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cột phải: Bảng lịch sử điểm danh trực tiếp -->
+            <section class="flat-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>📋</span> Nhật Ký Điểm Danh Vừa Ghi Nhận
+                    </div>
+                    <span class="card-tag">Tự động cập nhật</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="flat-table">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Họ và tên / ID</th>
+                                <th>Hình thức</th>
+                                <th>Bằng chứng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-tbody">
+                            {% if logs %}
+                                {% for log in logs %}
+                                <tr>
+                                    <td style="color: var(--text-secondary); font-size: 12px;">{{ log.time }}</td>
+                                    <td class="person-name">{{ log.name }}</td>
+                                    <td>
+                                        {% if 'AI' in log.method %}
+                                            <span class="badge-pill badge-ai">Khuôn mặt AI</span>
+                                        {% else %}
+                                            <span class="badge-pill badge-fingerprint">Vân tay</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.image_path %}
+                                            {% set clean_filename = log.image_path.replace('\\', '/').split('/')[-1] %}
+                                            <button class="btn-view" onclick="openProofModal('/proofs/{{ clean_filename }}', '{{ log.name }}')">
+                                                <span>🖼️</span> Xem ảnh
+                                            </button>
+                                        {% else %}
+                                            <span class="btn-empty">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr id="empty-row">
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 36px 0;">
+                                        Chưa có lượt điểm danh nào. Hệ thống đang sẵn sàng ghi nhận...
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modal xem ảnh bằng chứng đơn giản 2D -->
+    <div id="proof-modal" class="flat-modal" onclick="closeProofModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div id="modal-title" class="modal-title">Ảnh Chụp Bằng Chứng Điểm Danh</div>
+                <button class="modal-close" onclick="closeProofModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="modal-img" src="" alt="Proof Image" class="modal-img">
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

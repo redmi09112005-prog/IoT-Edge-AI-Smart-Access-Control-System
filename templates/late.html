@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Sách Điểm Danh Muộn Hôm Nay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="brand-area">
+            <div class="brand-icon" style="color: var(--danger); background-color: var(--danger-bg);">⚠️</div>
+            <div>
+                <h1 class="brand-title">Báo Cáo Điểm Danh Muộn Hôm Nay</h1>
+                <div class="brand-subtitle">Ngày: {{ today }} &bull; Đi muộn: Check-in lần đầu sau 08:00 AM</div>
+            </div>
+        </div>
+        <div class="header-badges">
+            <div class="status-badge" style="background-color: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);">
+                <span class="status-dot"></span>
+                <span>Vi phạm: > 08:00 AM</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="app-nav">
+        <a href="/" class="nav-item {{ 'active' if active_page == 'home' else '' }}">
+            <span>📹</span> Trang Chủ & Camera
+        </a>
+        <a href="/on-time" class="nav-item nav-ontime {{ 'active' if active_page == 'on_time' else '' }}">
+            <span>✅</span> Đúng Giờ Hôm Nay (≤ 8h00)
+        </a>
+        <a href="/late" class="nav-item nav-late {{ 'active' if active_page == 'late' else '' }}">
+            <span>⚠️</span> Đi Muộn Hôm Nay (> 8h00)
+        </a>
+        <a href="/statistics" class="nav-item nav-stats {{ 'active' if active_page == 'statistics' else '' }}">
+            <span>📊</span> Tần Suất Trong Tháng
+        </a>
+    </nav>
+
+    <!-- Nội dung chính -->
+    <main class="main-content">
+        
+        <!-- Thống kê nhanh dạng thẻ phẳng -->
+        <div class="metric-grid">
+            <div class="metric-card border-danger">
+                <div class="metric-label">Tổng người đi muộn</div>
+                <div class="metric-value" style="color: var(--danger);">{{ records|length }}</div>
+                <div class="metric-desc">Trường hợp check-in sau 08:00:00 AM</div>
+            </div>
+            <div class="metric-card border-warning">
+                <div class="metric-label">Giới hạn cho phép</div>
+                <div class="metric-value" style="color: var(--warning);">08:00 AM</div>
+                <div class="metric-desc">Thời gian tiêu chuẩn ca làm việc</div>
+            </div>
+            <div class="metric-card border-primary">
+                <div class="metric-label">Ngày ghi nhận</div>
+                <div class="metric-value" style="color: var(--text-main); font-size: 22px; padding-top: 6px;">{{ today }}</div>
+                <div class="metric-desc">Hệ thống đồng bộ trực tiếp</div>
+            </div>
+        </div>
+
+        <!-- Bảng danh sách -->
+        <section class="flat-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>⚠️</span> Danh Sách Chi Tiết Trường Hợp Đi Muộn
+                </div>
+                <span class="card-tag" style="background-color: var(--danger-bg); color: var(--danger); font-weight: 700;">ĐI MUỘN</span>
+            </div>
+            <div class="table-responsive">
+                <table class="flat-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th>Họ và tên / ID</th>
+                            <th>Giờ điểm danh lần đầu</th>
+                            <th>Hình thức</th>
+                            <th>Ảnh bằng chứng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if records %}
+                            {% for rec in records %}
+                            <tr>
+                                <td style="color: var(--text-muted); font-weight: 600;">#{{ loop.index }}</td>
+                                <td class="person-name">{{ rec.name }}</td>
+                                <td>
+                                    <strong style="color: var(--danger); font-family: 'JetBrains Mono', monospace;">
+                                        {{ rec.checkin_time.split(' ')[1] }}
+                                    </strong>
+                                    <span style="color: var(--text-muted); font-size: 11px;">({{ rec.checkin_time.split(' ')[0] }})</span>
+                                </td>
+                                <td>
+                                    {% if 'AI' in rec.method %}
+                                        <span class="badge-pill badge-ai">Khuôn mặt AI</span>
+                                    {% else %}
+                                        <span class="badge-pill badge-fingerprint">Vân tay</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if rec.image_path %}
+                                        {% set clean_filename = rec.image_path.replace('\\', '/').split('/')[-1] %}
+                                        <button class="btn-view" onclick="openProofModal('/proofs/{{ clean_filename }}', '{{ rec.name }}')">
+                                            <span>🖼️</span> Xem ảnh
+                                        </button>
+                                    {% else %}
+                                        <span class="btn-empty">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--success); padding: 40px 0; font-weight: 600;">
+                                    ✓ Hôm nay không có trường hợp nào đi muộn! Toàn bộ đều đúng giờ.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal xem ảnh -->
+    <div id="proof-modal" class="flat-modal" onclick="closeProofModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div id="modal-title" class="modal-title">Bằng Chứng Điểm Danh</div>
+                <button class="modal-close" onclick="closeProofModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="modal-img" src="" alt="Proof Image" class="modal-img">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openProofModal(imageUrl, userName) {
+            const modal = document.getElementById('proof-modal');
+            const modalImg = document.getElementById('modal-img');
+            const modalTitle = document.getElementById('modal-title');
+            if (modal && modalImg) {
+                modalImg.src = imageUrl;
+                if (modalTitle) modalTitle.innerText = `Bằng Chứng Điểm Danh: ${userName}`;
+                modal.classList.add('show');
+            }
+        }
+        function closeProofModal() {
+            const modal = document.getElementById('proof-modal');
+            if (modal) modal.classList.remove('show');
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeProofModal();
+        });
+    </script>
+</body>
+</html>
